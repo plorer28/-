@@ -1,0 +1,6 @@
+{
+  "name": "Teacher Mind Sanctuary",
+  "description": "지치고 상처받은 대한민국 교사들을 위한 힐링 심리 상담 및 위로 서비스입니다. 따뜻한 AI 공감 상담, 스트레스 자가 진단, 마음 털어놓기 손편지 처방, 그리고 마음챙김 호흡 가이드를 제공합니다.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

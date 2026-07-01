@@ -1,0 +1,87 @@
+{
+  "entities": {
+    "ChatSession": {
+      "title": "ChatSession",
+      "description": "교사 힐링 상담 대화 세션",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "대화 소유자 교사의 UID" },
+        "title": { "type": "string", "description": "세션 제목 (첫 메시지로 생성)" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "생성 시간" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "수정 시간" }
+      },
+      "required": ["userId", "title", "createdAt", "updatedAt"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "대화 세션 내 개별 메시지",
+      "type": "object",
+      "properties": {
+        "role": { "type": "string", "enum": ["user", "model"], "description": "메시지 발신자 역할" },
+        "text": { "type": "string", "description": "메시지 내용" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "작성 시간" }
+      },
+      "required": ["role", "text", "createdAt"]
+    },
+    "Prescription": {
+      "title": "Prescription",
+      "description": "마음 대나무숲 위로 편지 처방전",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "처방 대상 교사의 UID" },
+        "ventContent": { "type": "string", "description": "교사가 털어놓은 원본 고충 글" },
+        "category": { "type": "string", "description": "고충 카테고리" },
+        "letterTitle": { "type": "string", "description": "따뜻한 손편지 제목" },
+        "letterBody": { "type": "string", "description": "손편지 본문 내용" },
+        "prescription": { "type": "array", "description": "행동 처방 목록" },
+        "healingQuote": { "type": "string", "description": "한 줄 힐링 인용구" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "발행 시간" }
+      },
+      "required": ["userId", "ventContent", "category", "letterTitle", "letterBody", "prescription", "healingQuote", "createdAt"]
+    },
+    "Diagnosis": {
+      "title": "Diagnosis",
+      "description": "번아웃/스트레스 자가진단 결과",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "진단을 수행한 교사의 UID" },
+        "scores": {
+          "type": "object",
+          "description": "영역별 피로도 점수 (0-10)",
+          "properties": {
+            "exhaustion": { "type": "integer" },
+            "relations": { "type": "integer" },
+            "admin": { "type": "integer" }
+          },
+          "required": ["exhaustion", "relations", "admin"]
+        },
+        "statusTitle": { "type": "string", "description": "진단 요약 문구" },
+        "overallAnalysis": { "type": "string", "description": "종합 마음 가이드 내용" },
+        "exhaustionFeedback": { "type": "string", "description": "탈진 솔루션 피드백" },
+        "relationsFeedback": { "type": "string", "description": "소통과 경계 솔루션" },
+        "adminFeedback": { "type": "string", "description": "행정 업무 솔루션" },
+        "copingStrategy": { "type": "string", "description": "일상 리추얼 제안" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "측정 시간" }
+      },
+      "required": ["userId", "scores", "statusTitle", "overallAnalysis", "exhaustionFeedback", "relationsFeedback", "adminFeedback", "copingStrategy", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/chatSessions/{sessionId}": {
+      "schema": "ChatSession",
+      "description": "교사의 개별 상담 대화 세션"
+    },
+    "/chatSessions/{sessionId}/messages/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "대화 세션 내부의 개별 메시지 레코드"
+    },
+    "/prescriptions/{prescriptionId}": {
+      "schema": "Prescription",
+      "description": "지은 마음 편지 처방 목록"
+    },
+    "/diagnoses/{diagnosisId}": {
+      "schema": "Diagnosis",
+      "description": "자가 진단 측정 기록 및 조언"
+    }
+  }
+}

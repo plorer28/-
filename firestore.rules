@@ -1,0 +1,142 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global safety net - default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Common Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Entity validation functions
+    function isValidChatSession(data) {
+      return data.keys().hasAll(['userId', 'title', 'createdAt', 'updatedAt']) 
+        && data.keys().size() == 4
+        && data.userId is string
+        && data.userId == request.auth.uid
+        && data.title is string
+        && data.title.size() <= 100
+        && data.createdAt == request.time
+        && data.updatedAt == request.time;
+    }
+
+    function isValidChatMessage(data) {
+      return data.keys().hasAll(['role', 'text', 'createdAt'])
+        && data.keys().size() == 3
+        && data.role is string
+        && (data.role == 'user' || data.role == 'model')
+        && data.text is string
+        && data.text.size() <= 10000
+        && data.createdAt == request.time;
+    }
+
+    function isValidPrescription(data) {
+      return data.keys().hasAll(['userId', 'ventContent', 'category', 'letterTitle', 'letterBody', 'prescription', 'healingQuote', 'createdAt'])
+        && data.keys().size() == 8
+        && data.userId is string
+        && data.userId == request.auth.uid
+        && data.ventContent is string
+        && data.ventContent.size() <= 2000
+        && data.category is string
+        && data.letterTitle is string
+        && data.letterTitle.size() <= 200
+        && data.letterBody is string
+        && data.letterBody.size() <= 5000
+        && data.prescription is list
+        && data.prescription.size() <= 10
+        && data.healingQuote is string
+        && data.healingQuote.size() <= 500
+        && data.createdAt == request.time;
+    }
+
+    function isValidDiagnosis(data) {
+      return data.keys().hasAll(['userId', 'scores', 'statusTitle', 'overallAnalysis', 'exhaustionFeedback', 'relationsFeedback', 'adminFeedback', 'copingStrategy', 'createdAt'])
+        && data.keys().size() == 9
+        && data.userId is string
+        && data.userId == request.auth.uid
+        && data.scores is map
+        && data.scores.keys().hasAll(['exhaustion', 'relations', 'admin'])
+        && data.scores.keys().size() == 3
+        && data.scores.exhaustion is int
+        && data.scores.exhaustion >= 0 && data.scores.exhaustion <= 10
+        && data.scores.relations is int
+        && data.scores.relations >= 0 && data.scores.relations <= 10
+        && data.scores.admin is int
+        && data.scores.admin >= 0 && data.scores.admin <= 10
+        && data.statusTitle is string
+        && data.statusTitle.size() <= 200
+        && data.overallAnalysis is string
+        && data.overallAnalysis.size() <= 5000
+        && data.exhaustionFeedback is string
+        && data.relationsFeedback is string
+        && data.adminFeedback is string
+        && data.copingStrategy is string
+        && data.createdAt == request.time;
+    }
+
+    // MATCH RULES
+
+    // /chatSessions/{sessionId}
+    match /chatSessions/{sessionId} {
+      allow get: if isSignedIn() && isOwner(existing().userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(sessionId) && isValidChatSession(incoming());
+      allow update: if isSignedIn() && isOwner(existing().userId) && incoming().userId == existing().userId
+                    && (incoming().diff(existing()).affectedKeys().hasOnly(['title', 'updatedAt'])
+                        && incoming().updatedAt == request.time
+                        && incoming().title is string && incoming().title.size() <= 100);
+      allow delete: if isSignedIn() && isOwner(existing().userId);
+
+      // Sub-collection for messages
+      match /messages/{messageId} {
+        // Master Gate check: Fetch parent session to check ownership
+        function parentSession() {
+          return get(/databases/$(database)/documents/chatSessions/$(sessionId));
+        }
+        
+        allow get: if isSignedIn() && parentSession().data.userId == request.auth.uid;
+        allow list: if isSignedIn() && parentSession().data.userId == request.auth.uid;
+        allow create: if isSignedIn() && isValidId(messageId) && parentSession().data.userId == request.auth.uid && isValidChatMessage(incoming());
+        allow update, delete: if false; // Messages are immutable
+      }
+    }
+
+    // /prescriptions/{prescriptionId}
+    match /prescriptions/{prescriptionId} {
+      allow get: if isSignedIn() && isOwner(existing().userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(prescriptionId) && isValidPrescription(incoming());
+      allow update: if false; // Prescriptions are final
+      allow delete: if isSignedIn() && isOwner(existing().userId);
+    }
+
+    // /diagnoses/{diagnosisId}
+    match /diagnoses/{diagnosisId} {
+      allow get: if isSignedIn() && isOwner(existing().userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(diagnosisId) && isValidDiagnosis(incoming());
+      allow update: if false; // Diagnostics are final
+      allow delete: if isSignedIn() && isOwner(existing().userId);
+    }
+  }
+}
